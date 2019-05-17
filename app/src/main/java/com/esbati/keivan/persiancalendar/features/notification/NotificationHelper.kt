@@ -1,18 +1,20 @@
 package com.esbati.keivan.persiancalendar.features.notification
 
 import android.annotation.TargetApi
-import android.app.*
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
-import android.support.v4.app.NotificationCompat
+import androidx.core.app.NotificationCompat
 import android.text.TextUtils
 import com.esbati.keivan.persiancalendar.BuildConfig
-
+import com.esbati.keivan.persiancalendar.R
 import com.esbati.keivan.persiancalendar.features.home.MainActivity
 import com.esbati.keivan.persiancalendar.pojos.CalendarDay
-import com.esbati.keivan.persiancalendar.R
 import com.esbati.keivan.persiancalendar.repository.PreferencesHelper
 import com.esbati.keivan.persiancalendar.utils.ColorHelper
 import com.esbati.keivan.persiancalendar.utils.LanguageHelper
@@ -85,10 +87,10 @@ object NotificationHelper {
         val pIntent = PendingIntent.getActivity(context, requestId, intent, PendingIntent.FLAG_CANCEL_CURRENT)
 
         //Setup Notification
-        val notificationPriority = NOTIFICATION_PRIORITY[PreferencesHelper.loadInt(PreferencesHelper.KEY_NOTIFICATION_PRIORITY, 2)]
+        val notificationPriority = NOTIFICATION_PRIORITY[PreferencesHelper.notificationPriority]
         val mBuilder = NotificationCompat.Builder(context, STICKY_NOTIFICATION_CHANNEL_ID)
                 .setPriority(notificationPriority)
-                .setColor(ColorHelper.getSeasonColor(shownDay.mMonth))
+                .setColor(ColorHelper.getSeasonColor(shownDay.mMonth, context))
                 .setSmallIcon(R.drawable.icon01 + shownDay.mDay - 1)
                 .setContentIntent(pIntent)
                 .setWhen(0)
@@ -97,15 +99,11 @@ object NotificationHelper {
                 .setOngoing(true) as NotificationCompat.Builder
 
         //Setup Title Text
-        mBuilder.setContentTitle(
-                LanguageHelper.formatStringInPersian(shownDay.formattedDate)
-        )
+        mBuilder.setContentTitle(LanguageHelper.formatStringInPersian(shownDay.formattedDate))
 
         //Set Content Text
-        if(prepareCollapsedText(context, shownDay).isNotBlank())
-            mBuilder.setContentText(
-                    prepareCollapsedText(context, shownDay).trim()
-            )
+        if(shownDay.getEventsSummary(context).isNotBlank())
+            mBuilder.setContentText(shownDay.getEventsSummary(context))
 
         //If more than one event is available add an expanded Inbox Style view
         if (shownDay.mEvents.size > 1) {
@@ -124,7 +122,7 @@ object NotificationHelper {
         }
 
         //Setup Actions
-        if (PreferencesHelper.isOptionActive(PreferencesHelper.KEY_NOTIFICATION_ACTIONS, true)) {
+        if (PreferencesHelper.isNotificationActionsActive) {
             mBuilder.addAction(
                     R.drawable.ic_server_remove_white_24dp
                     , context.getString(R.string.notification_action_dismiss_title)
@@ -133,37 +131,6 @@ object NotificationHelper {
         }
 
         return mBuilder.build()
-    }
-
-    private fun prepareCollapsedText(context: Context, day: CalendarDay): String {
-        var title = ""
-        //Find an event with title
-        for (event in day.mEvents)
-            if (!TextUtils.isEmpty(event.title)) {
-                title = event.title!!
-                break
-            }
-
-        //Adjust Content Text
-        return when {
-            //If an Event with Title is found, add events count if needed
-            !TextUtils.isEmpty(title) && day.mEvents.size > 1 ->
-                context.getString(
-                        R.string.notification_collapsed_text_with_title
-                        , title
-                        , day.mEvents.size - 1
-                )
-
-            //If No Event with title is found just show event count if available
-            TextUtils.isEmpty(title) && day.mEvents.size > 0 ->
-                context.getString(
-                        R.string.notification_collapsed_text_without_title
-                        , day.mEvents.size
-                )
-
-            //Show title without any change
-            else -> title
-        }
     }
 
     fun cancelNotification(context: Context) {

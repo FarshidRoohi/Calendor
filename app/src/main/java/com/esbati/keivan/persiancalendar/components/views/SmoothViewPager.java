@@ -1,7 +1,7 @@
 package com.esbati.keivan.persiancalendar.components.views;
 
 import android.content.Context;
-import android.support.v4.view.ViewPager;
+import androidx.viewpager.widget.ViewPager;
 import android.util.AttributeSet;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.Interpolator;
@@ -10,7 +10,7 @@ import android.widget.Scroller;
 import java.lang.reflect.Field;
 
 /**
- * Created by asus on 11/18/2016.
+ * Created by Keivan Esbati on 11/18/2016.
  */
 
 public class SmoothViewPager extends ViewPager {

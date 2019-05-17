@@ -4,15 +4,6 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.support.design.widget.AppBarLayout
-import android.support.design.widget.CollapsingToolbarLayout
-import android.support.design.widget.CoordinatorLayout
-import android.support.design.widget.FloatingActionButton
-import android.support.v4.app.Fragment
-import android.support.v4.app.FragmentManager
-import android.support.v4.app.FragmentPagerAdapter
-import android.support.v4.content.ContextCompat
-import android.support.v7.widget.Toolbar
 import android.text.TextUtils
 import android.util.Log
 import android.view.LayoutInflater
@@ -21,8 +12,14 @@ import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.view.animation.AnimationUtils
 import android.widget.*
+import androidx.appcompat.widget.Toolbar
+import androidx.coordinatorlayout.widget.CoordinatorLayout
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager
+import androidx.fragment.app.FragmentPagerAdapter
 import com.esbati.keivan.persiancalendar.R
-import com.esbati.keivan.persiancalendar.components.ApplicationController
+import com.esbati.keivan.persiancalendar.components.locate
 import com.esbati.keivan.persiancalendar.components.views.CalendarBottomSheet
 import com.esbati.keivan.persiancalendar.components.views.CalendarPager
 import com.esbati.keivan.persiancalendar.features.calendarPage.CalendarFragment
@@ -32,57 +29,63 @@ import com.esbati.keivan.persiancalendar.pojos.CalendarDay
 import com.esbati.keivan.persiancalendar.pojos.UserEvent
 import com.esbati.keivan.persiancalendar.repository.Repository
 import com.esbati.keivan.persiancalendar.utils.Constants
+import com.esbati.keivan.persiancalendar.utils.bindView
 import com.esbati.keivan.persiancalendar.utils.showToast
 import com.esbati.keivan.persiancalendar.utils.toDp
+import com.google.android.material.appbar.AppBarLayout
+import com.google.android.material.appbar.CollapsingToolbarLayout
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 
 class HomeFragment : Fragment() {
 
+    private val repository: Repository by locate()
     private var mDisplayedMonth: Int = 0
     private var mDisplayedYear: Int = 0
     private lateinit var mSelectedDay: CalendarDay
 
     //Toolbar
     private var mToolbarMargin: Int = 0
-    private lateinit var mCoordinatorLayout: CoordinatorLayout
-    private lateinit var mAppbar: AppBarLayout
-    private lateinit var mCollapsingToolbar: CollapsingToolbarLayout
-    private lateinit var mToolbar: Toolbar
-    private lateinit var mToolbarTitle: TextView
-    private lateinit var mToolbarSubTitle: TextView
-    private lateinit var mToolbarBackground: ImageSwitcher
-    private lateinit var mSetting: ImageView
-    private lateinit var mRightBtn: ImageView
-    private lateinit var mLeftBtn: ImageView
+    private val mCoordinatorLayout: CoordinatorLayout by bindView(R.id.coordinator_layout)
+    private val mAppbar: AppBarLayout by bindView(R.id.appbar)
+    private val mCollapsingToolbar: CollapsingToolbarLayout by bindView(R.id.collapsing_toolbar)
+    private val mToolbar: Toolbar by bindView(R.id.toolbar)
+    private val mToolbarTitle: TextView by bindView(R.id.toolbar_title)
+    private val mToolbarSubTitle: TextView by bindView(R.id.toolbar_sub_title)
+    private val mToolbarBackground: ImageSwitcher by bindView(R.id.toolbar_background)
+    private val mSetting: ImageView by bindView(R.id.toolbar_setting)
+    private val mRightBtn: ImageView by bindView(R.id.toolbar_right_btn)
+    private val mLeftBtn: ImageView by bindView(R.id.toolbar_left_btn)
 
     //Pager
-    private lateinit var mPager: CalendarPager
-    private lateinit var mPagerAdapter: FragmentPagerAdapter
+    private val mPager: CalendarPager by bindView(R.id.pager)
+    private val mPagerAdapter by lazy(LazyThreadSafetyMode.NONE) { HomeAdapter(childFragmentManager) }
 
     //Bottom Sheet
-    private lateinit var mBottomSheet: CalendarBottomSheet
-    private lateinit var mEventActionBtn: FloatingActionButton
+    private val mBottomSheet: CalendarBottomSheet by bindView(R.id.bottom_sheet)
+    private val mEventActionBtn: FloatingActionButton by bindView(R.id.add_event)
+
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        return inflater.inflate(R.layout.fragment_home, container, false)?.apply {
-            setupToolbar(this)
-            setupPager(this)
-            setupBottomSheet(this)
-
-            //Setup Initial Day
-            mSelectedDay = Repository.getToday().also {
-                mDisplayedYear = it.mYear
-                mDisplayedMonth = it.mMonth
-            }
-
-            //Set Viewpager to Show Current Month
-            mPager.isRtL = true
-            mPager.setCurrentItem(mDisplayedYear, mDisplayedMonth)
-            showDate(mSelectedDay, false)
-        }
+        return inflater.inflate(R.layout.fragment_home, container, false)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        setupToolbar()
+        setupPager()
+        setupBottomSheet()
+
+        //Setup Initial Day
+        mSelectedDay = repository.getToday().also {
+            mDisplayedYear = it.mYear
+            mDisplayedMonth = it.mMonth
+        }
+
+        //Set Viewpager to Show Current Month
+        mPager.isRtL = true
+        mPager.setCurrentItem(mDisplayedYear, mDisplayedMonth)
+        showDate(mSelectedDay, false)
+
         runStartAnimation()
     }
 
@@ -97,18 +100,7 @@ class HomeFragment : Fragment() {
         mPager.startAnimation(AnimationUtils.loadAnimation(activity, R.anim.slide_in_bottom))
     }
 
-    private fun setupToolbar(rootView: View) {
-        mCoordinatorLayout = rootView.findViewById(R.id.coordinator_layout) as CoordinatorLayout
-        mAppbar = rootView.findViewById(R.id.appbar) as AppBarLayout
-        mCollapsingToolbar = rootView.findViewById(R.id.collapsing_toolbar) as CollapsingToolbarLayout
-        mToolbar = rootView.findViewById(R.id.toolbar) as Toolbar
-        mToolbarTitle = rootView.findViewById(R.id.toolbar_title) as TextView
-        mToolbarSubTitle = rootView.findViewById(R.id.toolbar_sub_title) as TextView
-        mToolbarBackground = rootView.findViewById(R.id.toolbar_background) as ImageSwitcher
-        mSetting = rootView.findViewById(R.id.toolbar_setting) as ImageView
-        mRightBtn = rootView.findViewById(R.id.toolbar_right_btn) as ImageView
-        mLeftBtn = rootView.findViewById(R.id.toolbar_left_btn) as ImageView
-
+    private fun setupToolbar() {
         mCollapsingToolbar.viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
             override fun onGlobalLayout() {
                 mCollapsingToolbar.scrimVisibleHeightTrigger = mCollapsingToolbar.height - 48.toDp()
@@ -171,11 +163,8 @@ class HomeFragment : Fragment() {
         })
     }
 
-    private fun setupPager(view: View) {
-        mPager = view.findViewById(R.id.pager) as CalendarPager
-        mPagerAdapter = HomeAdapter(childFragmentManager)
+    private fun setupPager() {
         mPager.adapter = mPagerAdapter
-
         mPager.addOnPageChangeListener(object : CalendarPager.OnPageChangeListener() {
             override fun onPageSelected(year: Int, month: Int) {
                 mDisplayedYear = year
@@ -200,13 +189,11 @@ class HomeFragment : Fragment() {
         })
     }
 
-    private fun setupBottomSheet(view: View) {
-        mEventActionBtn = view.findViewById(R.id.add_event) as FloatingActionButton
-        mBottomSheet = view.findViewById(R.id.bottom_sheet) as CalendarBottomSheet
+    private fun setupBottomSheet() {
         mBottomSheet.eventActionBtn = mEventActionBtn
         mBottomSheet.onEventListener = object : CalendarBottomSheet.OnEventListener {
             override fun onEventDeleted(deletedEvent: UserEvent) {
-                Repository.deleteEvent(deletedEvent).also {
+                repository.deleteEvent(deletedEvent).also {
                     //Refresh UI and show Date if Event Successfully added
                     if (it == 1) {
                         refreshFragment(deletedEvent.year, deletedEvent.month)
@@ -228,15 +215,15 @@ class HomeFragment : Fragment() {
                     return
                 }
 
-                if (ContextCompat.checkSelfPermission(ApplicationController.getContext(), Manifest.permission.WRITE_CALENDAR)
+                if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.WRITE_CALENDAR)
                         == PackageManager.PERMISSION_GRANTED)
-                    Repository.saveEvent(editedEvent).also {
+                    repository.saveEvent(editedEvent).also {
                         //Refresh UI and show Date if Event Successfully added
                         if (it == 1) {
                             refreshFragment(editedEvent.year, editedEvent.month)
 
                             mSelectedDay.mEvents.clear()
-                            mSelectedDay.mEvents.addAll(Repository.getEvents(
+                            mSelectedDay.mEvents.addAll(repository.getEvents(
                                     mSelectedDay.mYear
                                     , mSelectedDay.mMonth
                                     , mSelectedDay.mDay

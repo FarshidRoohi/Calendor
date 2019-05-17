@@ -4,13 +4,12 @@ import android.app.AlertDialog
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
-import android.support.design.widget.BottomSheetDialogFragment
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.NumberPicker
 import com.esbati.keivan.persiancalendar.BuildConfig
 import com.esbati.keivan.persiancalendar.R
-import com.esbati.keivan.persiancalendar.components.ApplicationController
 import com.esbati.keivan.persiancalendar.features.notification.NotificationHelper
 import com.esbati.keivan.persiancalendar.features.notification.NotificationUpdateService
 import com.esbati.keivan.persiancalendar.features.settings.cells.TextCheckCell
@@ -18,17 +17,20 @@ import com.esbati.keivan.persiancalendar.features.settings.cells.TextSettingsCel
 import com.esbati.keivan.persiancalendar.repository.PreferencesHelper
 
 /**
- * Created by asus on 4/16/2017.
+ * Created by Keivan Esbati on 4/16/2017.
  */
 
 class SettingsFragment : BottomSheetDialogFragment() {
 
-    private  val mPriorityTitles = arrayOf(
-            ApplicationController.getContext().getString(R.string.least),
-            ApplicationController.getContext().getString(R.string.down),
-            ApplicationController.getContext().getString(R.string.priority_default),
-            ApplicationController.getContext().getString(R.string.up),
-            ApplicationController.getContext().getString(R.string.the_most))
+    private val mPriorityTitles by lazy {
+        arrayOf(
+                getString(R.string.least),
+                getString(R.string.down),
+                getString(R.string.priority_default),
+                getString(R.string.up),
+                getString(R.string.the_most)
+        )
+    }
 
     private lateinit var mNotificationAction: TextCheckCell
     private lateinit var mNotificationPriority: TextSettingsCell
@@ -40,7 +42,7 @@ class SettingsFragment : BottomSheetDialogFragment() {
         textCheck {
             title = getString(R.string.setting_animation_selection)
             isEnabled = Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP
-            isChecked = PreferencesHelper.isOptionActive(PreferencesHelper.KEY_ANIMATION_SELECTION, false)
+            isChecked = PreferencesHelper.isAnimationSelectionActive
             needDivider = false
             onClick {
                 isChecked = PreferencesHelper.toggleOption(PreferencesHelper.KEY_ANIMATION_SELECTION, false)
@@ -52,11 +54,11 @@ class SettingsFragment : BottomSheetDialogFragment() {
         header(R.string.setting_sticky_notification)
         textCheck {
             title = getString(R.string.setting_sticky_notification_display)
-            isChecked = PreferencesHelper.isOptionActive(PreferencesHelper.KEY_NOTIFICATION_SHOW, true)
+            isChecked = PreferencesHelper.shouldShowNotification
             needDivider = true
             onClick {
                 //Toggle Setting and Set Notification Settings
-                isChecked = PreferencesHelper.toggleOption(PreferencesHelper.KEY_NOTIFICATION_SHOW, true)
+                isChecked = PreferencesHelper.toggleOption(PreferencesHelper.KEY_NOTIFICATION_SHOW)
                 mNotificationAction.isEnabled = isChecked
                 mNotificationPriority.isEnabled = isChecked
 
@@ -69,12 +71,12 @@ class SettingsFragment : BottomSheetDialogFragment() {
             mNotificationAction = this
 
             title = getString(R.string.setting_sticky_notification_actions)
-            isEnabled = PreferencesHelper.isOptionActive(PreferencesHelper.KEY_NOTIFICATION_SHOW, true)
-            isChecked = PreferencesHelper.isOptionActive(PreferencesHelper.KEY_NOTIFICATION_ACTIONS, true)
+            isEnabled = PreferencesHelper.shouldShowNotification
+            isChecked = PreferencesHelper.isNotificationActionsActive
             needDivider = true
             onClick {
                 //Toggle Setting & Update Notification
-                isChecked = PreferencesHelper.toggleOption(PreferencesHelper.KEY_NOTIFICATION_ACTIONS, true)
+                isChecked = PreferencesHelper.toggleOption(PreferencesHelper.KEY_NOTIFICATION_ACTIONS)
                 NotificationUpdateService.enqueueUpdate(context!!)
             }
         }
@@ -83,7 +85,7 @@ class SettingsFragment : BottomSheetDialogFragment() {
             mNotificationPriority = this
 
             needDivider = false
-            isEnabled = PreferencesHelper.isOptionActive(PreferencesHelper.KEY_NOTIFICATION_SHOW, true)
+            isEnabled = PreferencesHelper.shouldShowNotification
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val channelImportanceIndex = Math.max(0, NotificationHelper.getChannelImportance(context!!) - 1)
                 title = getString(R.string.setting_sticky_notification_priority)
@@ -91,7 +93,7 @@ class SettingsFragment : BottomSheetDialogFragment() {
                 onClick { NotificationHelper.openChannelSetting(context) }
             } else {
                 title = getString(R.string.setting_sticky_notification_priority)
-                value = mPriorityTitles[PreferencesHelper.loadInt(PreferencesHelper.KEY_NOTIFICATION_PRIORITY, 2)]
+                value = mPriorityTitles[PreferencesHelper.notificationPriority]
                 onClick { showNotificationPriorityPicker() }
             }
         }
@@ -113,7 +115,7 @@ class SettingsFragment : BottomSheetDialogFragment() {
             maxValue = mPriorityTitles.size - 1
             wrapSelectorWheel = false
             displayedValues = mPriorityTitles
-            value = PreferencesHelper.loadInt(PreferencesHelper.KEY_NOTIFICATION_PRIORITY, 2)
+            value = PreferencesHelper.notificationPriority
         }
 
         AlertDialog.Builder(context!!)
@@ -121,7 +123,7 @@ class SettingsFragment : BottomSheetDialogFragment() {
                 .setView(numberPicker)
                 .setPositiveButton(R.string.dialog_button_confirm) { _, _ ->
                     //Toggle Setting
-                    PreferencesHelper.saveInt(PreferencesHelper.KEY_NOTIFICATION_PRIORITY, numberPicker.value)
+                    PreferencesHelper.notificationPriority = numberPicker.value
                     mNotificationPriority.value = mPriorityTitles[numberPicker.value]
 
                     //Update Notification

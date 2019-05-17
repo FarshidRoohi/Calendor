@@ -4,13 +4,14 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.support.v4.app.ActivityCompat
-import android.support.v4.app.Fragment
-import android.support.v4.content.ContextCompat
-import android.support.v7.app.AlertDialog
-import android.support.v7.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.fragment.app.Fragment
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import android.view.View
 import com.esbati.keivan.persiancalendar.R
+import com.esbati.keivan.persiancalendar.utils.checkPermissions
+import com.esbati.keivan.persiancalendar.utils.shouldShowPermissionsRationale
 import com.esbati.keivan.persiancalendar.utils.showThemedDialog
 
 private const val PERMISSIONS_REQUEST_READ_CALENDAR = 76
@@ -27,14 +28,10 @@ class MainActivity : AppCompatActivity() {
 
         setupFragment()
 
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALENDAR)
-                != PackageManager.PERMISSION_GRANTED
-                || ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_CALENDAR)
-                != PackageManager.PERMISSION_GRANTED) {
+        if (!checkPermissions(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)){
 
             // Permission is not granted
-            if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_CALENDAR)
-                    || ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.WRITE_CALENDAR)) {
+            if (shouldShowPermissionsRationale(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)) {
 
                 // Permission Request Explanation
                 AlertDialog.Builder(this)
